@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Kanzlei Dokumenten-Tracker</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+
+<!-- MSAL.js for Microsoft Auth -->
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.7/chart.umd.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Styrene+A:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+[data-theme="light"]{--bg:#FAF9F7;--bg2:#F0EDE8;--bg3:#E8E4DD;--card:#FFFFFF;--card-h:#F7F5F2;--inp:#FFFFFF;--bdr:#DDD8D0;--bdr-h:#C5BFB5;--bdr-f:#C15F3C;--t1:#1A1915;--t2:#6B6560;--t3:#9A948C;--accent:#C15F3C;--accent-h:#A8512F;--accent-t:#FFF;--accent-g:rgba(193,95,60,.08);--g:#2D8A56;--gd:rgba(45,138,86,.08);--am:#B5850A;--amd:rgba(181,133,10,.08);--r:#C93B3B;--rd:rgba(201,59,59,.08);--shadow:0 1px 3px rgba(0,0,0,.06);--shadow-lg:0 4px 16px rgba(0,0,0,.08);--ch1:#C15F3C;--ch2:#2D8A56;--ch3:#B5850A;--ch4:#6366F1;--ch5:#0891B2;--ch6:#9333EA;--ch7:#E11D48}
+[data-theme="dark"]{--bg:#1A1915;--bg2:#24221D;--bg3:#2E2B25;--card:#2E2B25;--card-h:#38342D;--inp:#24221D;--bdr:#3D3830;--bdr-h:#524C42;--bdr-f:#DA7756;--t1:#F0EDE8;--t2:#9A948C;--t3:#6B6560;--accent:#DA7756;--accent-h:#E8936E;--accent-t:#1A1915;--accent-g:rgba(218,119,86,.10);--g:#5CB87A;--gd:rgba(92,184,122,.10);--am:#D4A833;--amd:rgba(212,168,51,.10);--r:#E06060;--rd:rgba(224,96,96,.10);--shadow:0 1px 3px rgba(0,0,0,.2);--shadow-lg:0 4px 16px rgba(0,0,0,.25);--ch1:#DA7756;--ch2:#5CB87A;--ch3:#D4A833;--ch4:#818CF8;--ch5:#22D3EE;--ch6:#A78BFA;--ch7:#FB7185}
+:root{--rad:8px;--rads:5px;--tr:.15s ease}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Styrene A',system-ui,sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;font-size:13px}
+
+/* ===== Reusable components (same as local version) ===== */
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:var(--card);border-bottom:1px solid var(--bdr);position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.top-b{display:flex;align-items:center;gap:10px}
+.logo{width:30px;height:30px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--accent-t)}
+.top-t{font-size:14px;font-weight:600}.top-s{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+.top-a{display:flex;gap:6px;align-items:center}
+.b{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--rads);font-family:inherit;font-size:11px;font-weight:500;border:1px solid var(--bdr);background:var(--card);color:var(--t1);cursor:pointer;transition:all var(--tr);white-space:nowrap}
+.b:hover{border-color:var(--bdr-h);background:var(--card-h)}.b:disabled{opacity:.35;cursor:not-allowed}
+.bp{background:var(--accent);border-color:var(--accent);color:var(--accent-t)}.bp:hover{background:var(--accent-h)}
+.bd{color:var(--r)}.bd:hover{background:var(--rd);border-color:var(--r)}
+.bs{padding:4px 8px;font-size:10px}
+.db-badge{font-size:10px;color:var(--t3);background:var(--bg2);padding:3px 10px;border-radius:99px;border:1px solid var(--bdr);font-family:'JetBrains Mono',monospace}
+.theme-toggle{font-size:15px;cursor:pointer;background:none;border:none;padding:3px;border-radius:4px;line-height:1}.theme-toggle:hover{background:var(--bg2)}
+.user-badge{font-size:10px;color:var(--accent);font-weight:500}
+
+.m{padding:16px 24px;max-width:1440px;margin:0 auto}
+.tabs{display:flex;gap:1px;margin-bottom:16px;border-bottom:1px solid var(--bdr);overflow-x:auto}
+.tab{padding:8px 14px;font-size:11px;font-weight:500;color:var(--t3);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:inherit;transition:all var(--tr);white-space:nowrap}
+.tab:hover{color:var(--t1)}.tab.a{color:var(--accent);border-bottom-color:var(--accent)}
+.tc{display:none}.tc.a{display:block;animation:fi .2s ease}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1}}
+
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:16px}
+.sc{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px;box-shadow:var(--shadow)}
+.sl{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.sv{font-size:20px;font-weight:700;letter-spacing:-.5px}
+.ss{font-size:9px;color:var(--t3);margin-top:2px}
+.sv-row{display:flex;align-items:baseline;gap:6px}
+.trend-up{color:var(--g);font-size:10px;font-weight:600}
+.trend-down{color:var(--r);font-size:10px;font-weight:600}
+
+.toggle{border:1px solid var(--bdr);border-radius:var(--rad);background:var(--card);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+.toggle-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none}
+.toggle-head:hover{background:var(--card-h)}
+.toggle-head h3{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.toggle-arrow{transition:transform .2s;font-size:9px;color:var(--t3)}
+.toggle.open .toggle-arrow{transform:rotate(180deg)}
+.toggle-body{display:none;border-top:1px solid var(--bdr)}
+.toggle.open .toggle-body{display:block}
+.toggle-meta{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace}
+
+table{width:100%;border-collapse:collapse}
+thead th{padding:7px 10px;text-align:left;font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--bdr);background:var(--bg2)}
+tbody td{padding:8px 10px;font-size:11px;border-bottom:1px solid var(--bdr)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--card-h)}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:99px;font-size:9px;font-weight:500}
+.ch{color:var(--g);background:var(--gd)}.cm{color:var(--am);background:var(--amd)}.cl{color:var(--r);background:var(--rd)}
+.fn{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--t2)}
+.fa-warn{color:var(--r);font-size:9px;font-weight:600}.fa-ok{color:var(--g);font-size:9px}
+
+.chart-card{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--shadow);overflow:hidden}
+.chart-card-head{padding:10px 14px;border-bottom:1px solid var(--bdr);font-size:12px;font-weight:600}
+.chart-card-body{padding:14px}
+.dash-grid{display:grid;gap:12px;margin-top:14px}
+.dash-2{grid-template-columns:1fr 1fr}
+@media(max-width:900px){.dash-2{grid-template-columns:1fr}}
+.donut-wrap{position:relative;display:flex;align-items:center;justify-content:center}
+.donut-center{position:absolute;text-align:center}
+.donut-center .num{font-size:24px;font-weight:700}
+.donut-center .lbl{font-size:9px;color:var(--t3);text-transform:uppercase}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+.mc{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px;box-shadow:var(--shadow)}
+.mc:hover{border-color:var(--bdr-h)}
+.mc-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.mc-meta{font-size:9px;color:var(--t3);margin-bottom:6px;font-family:'JetBrains Mono',monospace}
+.mc-types{display:flex;flex-wrap:wrap;gap:3px}
+.mc-tag{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:500;background:var(--accent-g);color:var(--accent)}
+.mc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
+
+/* Login screen */
+.login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;gap:20px}
+.login-screen h2{font-size:22px;font-weight:700}
+.login-screen p{font-size:13px;color:var(--t2);max-width:400px;line-height:1.6}
+.login-logo{width:64px;height:64px;border-radius:16px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;color:var(--accent-t)}
+
+/* Folder picker */
+.folder-bar{background:var(--card);border:1px solid var(--bdr);border-radius:var(--rad);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+.folder-bar .path{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);flex:1}
+
+/* Spinner */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--bdr);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;bottom:14px;right:14px;background:var(--card);border:1px solid var(--bdr);border-radius:var(--rad);padding:9px 14px;font-size:11px;box-shadow:var(--shadow-lg);z-index:9999;transform:translateY(80px);opacity:0;transition:all .25s;max-width:360px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.ok{border-left:3px solid var(--g)}.toast.err{border-left:3px solid var(--r)}.toast.warn{border-left:3px solid var(--am)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px}
+
+.config-note{background:var(--accent-g);border:1px solid var(--accent);border-radius:var(--rad);padding:14px;margin:20px 0;font-size:12px;line-height:1.6}
+.config-note code{background:var(--bg2);padding:1px 4px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- ===== TOPBAR ===== -->
+<div class="top">
+  <div class="top-b"><div class="logo">K</div><div><div class="top-t">Dokumenten-Tracker</div><div class="top-s">Cloud · OneDrive</div></div></div>
+  <div class="top-a">
+    <span class="db-badge" id="db-badge">DB: 0</span>
+    <span class="user-badge" id="user-name"></span>
+    <button class="b bs" id="btn-auth" onclick="handleAuth()">Anmelden</button>
+    <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn">☀️</button>
+  </div>
+</div>
+
+<div class="m">
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-logo">K</div>
+    <h2>Kanzlei Dokumenten-Tracker</h2>
+    <p>Melde dich mit deinem Microsoft-Konto an, um auf OneDrive-Dateien zuzugreifen und Dokumente automatisch zu klassifizieren.</p>
+    <button class="b bp" onclick="handleAuth()" style="padding:10px 28px;font-size:14px">Mit Microsoft anmelden</button>
+    <div class="config-note" id="config-status"></div>
+  </div>
+
+  <!-- ===== MAIN APP (hidden until logged in) ===== -->
+  <div id="app-main" style="display:none">
+    <!-- Folder bar -->
+    <div class="folder-bar">
+      <span style="font-size:11px;color:var(--t3)">OneDrive Ordner:</span>
+      <span class="path" id="current-folder">/</span>
+      <button class="b bs" onclick="pickFolder()">Ordner wählen</button>
+      <button class="b bs bp" onclick="scanFolder()" id="btn-scan">Scannen</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab a" data-tab="upload" onclick="sw('upload')">Ergebnisse</button>
+      <button class="tab" data-tab="dashboard" onclick="sw('dashboard')">Dashboard</button>
+      <button class="tab" data-tab="mandanten" onclick="sw('mandanten')">Mandanten</button>
+      <button class="tab" data-tab="history" onclick="sw('history')">Verlauf</button>
+      <button class="tab" data-tab="settings" onclick="sw('settings')">Einstellungen</button>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="tc a" id="tab-upload">
+      <div id="scan-status" style="text-align:center;padding:40px;color:var(--t3)">Wähle einen OneDrive-Ordner und klicke "Scannen".</div>
+      <div id="up-res" style="display:none">
+        <div class="sg" id="up-stats"></div>
+        <div class="toggle open" id="tgl-ur">
+          <div class="toggle-head" onclick="tgl('tgl-ur')"><h3><span class="toggle-arrow">▼</span> Ergebnisse</h3><span class="toggle-meta" id="up-cnt">0</span></div>
+          <div class="toggle-body"><div style="overflow-x:auto"><table><thead><tr><th>Dateiname</th><th>Datum</th><th>Mandant</th><th>FA</th><th>Typ</th><th>Konfidenz</th></tr></thead><tbody id="up-body"></tbody></table></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="tc" id="tab-dashboard">
+      <div id="dash-loading" style="text-align:center;padding:40px;color:var(--t3)">Lade Dashboard...</div>
+      <div id="dash-c" style="display:none">
+        <div class="sg" id="d-stats"></div>
+        <div class="dash-grid dash-2">
+          <div class="chart-card"><div class="chart-card-head">Dokumententyp-Verteilung</div><div class="chart-card-body"><div class="donut-wrap"><canvas id="chart-donut" height="220"></canvas><div class="donut-center"><div class="num" id="donut-total">0</div><div class="lbl">Gesamt</div></div></div></div></div>
+          <div class="chart-card"><div class="chart-card-head">Mandanten × Dokumententyp</div><div class="chart-card-body"><canvas id="chart-cust-stack" height="220"></canvas><div class="legend" id="cust-legend"></div></div></div>
+        </div>
+        <div class="dash-grid dash-2" style="margin-top:12px">
+          <div class="chart-card"><div class="chart-card-head">Monatlicher Trend</div><div class="chart-card-body"><canvas id="chart-trend" height="180"></canvas></div></div>
+          <div class="chart-card"><div class="chart-card-head">Top Mandanten</div><div class="chart-card-body"><canvas id="chart-top-cust" height="180"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANDANTEN -->
+    <div class="tc" id="tab-mandanten">
+      <div style="margin-bottom:10px"><input type="text" placeholder="Mandant suchen..." id="m-search" oninput="filterMandanten()" style="width:100%;max-width:280px;padding:6px 8px;border-radius:var(--rads);border:1px solid var(--bdr);background:var(--inp);color:var(--t1);font-size:11px"></div>
+      <div class="mc-grid" id="m-grid"></div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="tc" id="tab-history">
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" placeholder="Suche..." id="h-search" oninput="renderHistory()" style="flex:1;min-width:160px;padding:6px 8px;border-radius:var(--rads);border:1px solid var(--bdr);background:var(--inp);color:var(--t1);font-size:11px">
+        <select id="h-filter" onchange="renderHistory()" style="padding:6px 8px;border-radius:var(--rads);border:1px solid var(--bdr);background:var(--inp);color:var(--t1);font-size:11px"><option value="">Alle Typen</option></select>
+        <button class="b bs" onclick="exportCSV()">⬇ CSV Export</button>
+        <button class="b bs bd" onclick="clearDB()">Datenbank leeren</button>
+      </div>
+      <div class="toggle open" id="tgl-hr">
+        <div class="toggle-head" onclick="tgl('tgl-hr')"><h3><span class="toggle-arrow">▼</span> Alle Dokumente</h3><span class="toggle-meta" id="h-cnt">0</span></div>
+        <div class="toggle-body"><div style="overflow-x:auto"><table><thead><tr><th>Dateiname</th><th>Datum</th><th>Mandant</th><th>FA</th><th>Typ</th><th>Konfidenz</th><th>Gescannt</th></tr></thead><tbody id="h-body"></tbody></table></div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tc" id="tab-settings">
+      <div class="chart-card" style="margin-bottom:12px">
+        <div class="chart-card-head">Dokumententypen</div>
+        <div class="chart-card-body">
+          <div id="dtl" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input type="text" placeholder="Neuer Typ..." id="nt-l" style="flex:1;min-width:100px;padding:6px 8px;border-radius:var(--rads);border:1px solid var(--bdr);background:var(--inp);color:var(--t1);font-size:11px">
+            <input type="text" placeholder="Schlüsselwörter..." id="nt-k" style="flex:1;min-width:100px;padding:6px 8px;border-radius:var(--rads);border:1px solid var(--bdr);background:var(--inp);color:var(--t1);font-size:11px">
+            <button class="b bp bs" onclick="addType()">+</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-head">Info & Konfiguration</div>
+        <div class="chart-card-body" style="font-size:11px;color:var(--t2);line-height:1.6">
+          <strong>Kanzlei Dokumenten-Tracker — Cloud Edition</strong><br>
+          ✓ Microsoft OneDrive Integration via Graph API<br>
+          ✓ IndexedDB lokale Datenbank (persistent, kein Server nötig)<br>
+          ✓ Fuzzy-Matching 80% · FA-Extraktion · Namens-Normalisierung<br>
+          ✓ Unbekannt → Schreiben · Übermitteilung → Mitteilung<br><br>
+          <strong>Datenbank:</strong> IndexedDB (browserseitig, ca. unbegrenzt Speicher)<br>
+          <strong>Auth:</strong> Microsoft MSAL.js 2.x (OAuth2 / OpenID Connect)<br>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   CONFIGURATION — Replace these with your Azure App Registration values
+   ================================================================ */
+const CLIENT_ID = '6656affc-20ff-4d55-be0d-033ad43328c0';  // ← From Azure Portal
+const TENANT_ID = 'a7179b5d-d2e8-4129-b5aa-fef494fbe059';  // ← From Azure Portal (or 'common' for multi-tenant)
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+const GRAPH_SCOPES = ['Files.Read','Files.ReadWrite','User.Read'];
+
+/* ================================================================
+   MSAL.js Auth
+   ================================================================ */
+let msalInstance = null;
+let accessToken = null;
+let currentAccount = null;
+
+function initMsal() {
+  const isConfigured = CLIENT_ID !== 'DEINE-CLIENT-ID-HIER';
+  const statusEl = document.getElementById('config-status');
+
+  if (!isConfigured) {
+    statusEl.innerHTML = `
+      <strong>⚠ Konfiguration erforderlich</strong><br><br>
+      Öffne <code>index.html</code> und ersetze die Platzhalter:<br>
+      <code>CLIENT_ID = 'deine-client-id'</code><br>
+      <code>TENANT_ID = 'deine-tenant-id'</code><br><br>
+      Siehe <strong>AZURE_SETUP.md</strong> für die Schritt-für-Schritt Anleitung.
+    `;
+    return;
+  }
+  statusEl.style.display = 'none';
+
+  const msalConfig = {
+    auth: {
+      clientId: CLIENT_ID,
+      authority: `https://login.microsoftonline.com/${TENANT_ID}`,
+      redirectUri: REDIRECT_URI,
+    },
+    cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+  };
+
+  msalInstance = new msal.PublicClientApplication(msalConfig);
+
+  // Handle redirect callback
+  msalInstance.handleRedirectPromise().then(resp => {
+    if (resp) { currentAccount = resp.account; onLoggedIn(); }
+    else {
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) { currentAccount = accounts[0]; onLoggedIn(); }
+    }
+  }).catch(e => { console.error('MSAL redirect error:', e); toast('Auth-Fehler: ' + e.message, 'err'); });
+}
+
+async function handleAuth() {
+  if (!msalInstance) { toast('Bitte konfiguriere zuerst CLIENT_ID und TENANT_ID.', 'err'); return; }
+  if (currentAccount) {
+    // Logout
+    msalInstance.logoutPopup({ account: currentAccount });
+    currentAccount = null; accessToken = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-main').style.display = 'none';
+    document.getElementById('btn-auth').textContent = 'Anmelden';
+    document.getElementById('user-name').textContent = '';
+    return;
+  }
+  try {
+    const resp = await msalInstance.loginPopup({ scopes: GRAPH_SCOPES });
+    currentAccount = resp.account;
+    onLoggedIn();
+  } catch (e) {
+    console.error('Login error:', e);
+    toast('Login fehlgeschlagen: ' + e.message, 'err');
+  }
+}
+
+async function getToken() {
+  if (!msalInstance || !currentAccount) return null;
+  try {
+    const resp = await msalInstance.acquireTokenSilent({ scopes: GRAPH_SCOPES, account: currentAccount });
+    return resp.accessToken;
+  } catch (e) {
+    const resp = await msalInstance.acquireTokenPopup({ scopes: GRAPH_SCOPES });
+    return resp.accessToken;
+  }
+}
+
+function onLoggedIn() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-main').style.display = 'block';
+  document.getElementById('btn-auth').textContent = 'Abmelden';
+  document.getElementById('user-name').textContent = currentAccount.name || currentAccount.username;
+  loadDB().then(() => { updateBadge(); renderTypes(); });
+  toast('Angemeldet als ' + (currentAccount.name || currentAccount.username));
+}
+
+/* ================================================================
+   Microsoft Graph API — OneDrive
+   ================================================================ */
+let currentFolderId = 'root';
+let currentFolderPath = '/';
+
+async function graphFetch(url) {
+  const token = await getToken();
+  if (!token) throw new Error('Nicht angemeldet');
+  const resp = await fetch(url, { headers: { 'Authorization': 'Bearer ' + token } });
+  if (!resp.ok) throw new Error(`Graph API ${resp.status}: ${resp.statusText}`);
+  return resp.json();
+}
+
+async function pickFolder() {
+  // List children of current folder
+  try {
+    const url = currentFolderId === 'root'
+      ? 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null&$top=100'
+      : `https://graph.microsoft.com/v1.0/me/drive/items/${currentFolderId}/children?$filter=folder ne null&$top=100`;
+    const data = await graphFetch(url);
+    const folders = data.value.filter(i => i.folder);
+
+    if (folders.length === 0) { toast('Keine Unterordner gefunden.', 'warn'); return; }
+
+    // Simple prompt-based picker (could be upgraded to a modal)
+    const names = folders.map((f, i) => `${i + 1}. ${f.name}`).join('\n');
+    const choice = prompt(`Ordner wählen:\n\n0. [Aktuellen Ordner verwenden: ${currentFolderPath}]\n${names}\n\nNummer eingeben:`);
+    if (choice === null) return;
+    const idx = parseInt(choice);
+    if (idx === 0) return; // Keep current
+    if (idx >= 1 && idx <= folders.length) {
+      const folder = folders[idx - 1];
+      currentFolderId = folder.id;
+      currentFolderPath = folder.parentReference?.path
+        ? folder.parentReference.path.replace('/drive/root:', '') + '/' + folder.name
+        : '/' + folder.name;
+      document.getElementById('current-folder').textContent = currentFolderPath;
+      toast('Ordner: ' + currentFolderPath);
+    }
+  } catch (e) {
+    toast('Fehler: ' + e.message, 'err');
+  }
+}
+
+async function scanFolder() {
+  const btn = document.getElementById('btn-scan');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanne...';
+  try {
+    const url = currentFolderId === 'root'
+      ? 'https://graph.microsoft.com/v1.0/me/drive/root/children?$top=999'
+      : `https://graph.microsoft.com/v1.0/me/drive/items/${currentFolderId}/children?$top=999`;
+    const data = await graphFetch(url);
+    const pdfs = data.value.filter(i => i.name.toLowerCase().endsWith('.pdf'));
+
+    if (pdfs.length === 0) { toast('Keine PDF-Dateien in diesem Ordner.', 'warn'); btn.disabled = false; btn.textContent = 'Scannen'; return; }
+
+    const results = pdfs.map(f => classifyFilename(f.name));
+    const { inserted, skipped } = await insertResults(results);
+    sessionResults = results;
+    renderUpload({ results, inserted, skipped });
+    updateBadge();
+    toast(skipped > 0 ? `${inserted} neu, ${skipped} Duplikate.` : `${inserted} klassifiziert.`, skipped > 0 ? 'warn' : 'ok');
+  } catch (e) {
+    toast('Scan-Fehler: ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Scannen';
+}
+
+/* ================================================================
+   Classification Engine (JavaScript port from Python)
+   ================================================================ */
+const DEFAULT_DOC_TYPES = [
+  { id: 'bescheid', label: 'Bescheid', keywords: ['Bescheid', 'Steuerbescheid', 'Festsetzung'] },
+  { id: 'mitteilung', label: 'Mitteilung', keywords: ['Mitteilung', 'Benachrichtigung', 'Mittlg', 'Uebermitteilung', 'Übermitteilung', 'Ubermitteilung'] },
+  { id: 'mahnung', label: 'Mahnung', keywords: ['Mahnung', 'Zahlungserinnerung'] },
+  { id: 'vollstreckung', label: 'Vollstreckungsankündigung', keywords: ['Vollstreckung', 'Ankuendigung', 'Vollstreckungsankuendigung', 'Vollstreckungsandrohung'] },
+  { id: 'erinnerung', label: 'Erinnerung', keywords: ['Erinnerung'] },
+  { id: 'umbuchung', label: 'Umbuchung', keywords: ['Umbuchung', 'Umbuchungsmitteilung'] },
+];
+let docTypes = JSON.parse(localStorage.getItem('kd-doctypes') || 'null') || DEFAULT_DOC_TYPES.map(d => ({ ...d }));
+
+const COMPANY_SUFFIXES = new Set(['gmbh', 'ag', 'kg', 'ohg', 'ug', 'gbr', 'ev', 'eg', 'mbh', 'co', 'inc', 'ltd', 'se']);
+const FA_MARKERS = new Set(['fa', 'finanzamt']);
+const FUZZY_THRESHOLD = 0.80;
+
+function fuzzyScore(a, b) {
+  // SequenceMatcher equivalent — simple Levenshtein ratio
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (a === b) return 1.0;
+  const m = a.length, n = b.length;
+  if (m === 0 || n === 0) return 0;
+  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+    dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+  return (2 * dp[m][n]) / (m + n);
+}
+
+function normalizeName(name) {
+  if (!name) return name;
+  const parts = name.split(/\s+/);
+  if (parts.some(p => COMPANY_SUFFIXES.has(p.toLowerCase().replace(/[.,]/, '')))) return name;
+  const lowers = parts.map(p => p.toLowerCase());
+  const connectors = ['und', '&', 'u'];
+  for (const conn of connectors) {
+    const idx = lowers.indexOf(conn);
+    if (idx > -1) {
+      const p1 = parts.slice(0, idx).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(' ');
+      const p2 = parts.slice(idx + 1).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(' ');
+      const pair = [p1, p2].sort();
+      return pair[0] + ' & ' + pair[1];
+    }
+  }
+  return parts.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join(' ');
+}
+
+function classifyFilename(filename) {
+  const base = filename.replace(/\.pdf$/i, '');
+  const dateMatch = base.match(/^(\d{8})/);
+  const dateStr = dateMatch ? dateMatch[1] : '';
+  const rest = dateStr ? base.slice(dateStr.length).replace(/^[_ ]+/, '') : base;
+  const tokens = rest.split('_');
+
+  let bestMatch = null, bestScore = 0, bestIdx = null;
+  for (let sl = 1; sl < Math.min(5, tokens.length); sl++) {
+    const suffix = tokens.slice(tokens.length - sl).join(' ').toLowerCase();
+    for (const dt of docTypes) {
+      for (const kw of dt.keywords) {
+        const kl = kw.toLowerCase();
+        let sc;
+        if (kl.includes(suffix) || suffix.includes(kl)) sc = Math.max(0.95, fuzzyScore(suffix, kl));
+        else sc = fuzzyScore(suffix, kl);
+        if (sc > bestScore) { bestScore = sc; bestMatch = dt; bestIdx = tokens.length - sl; }
+      }
+    }
+  }
+
+  let docType, docTypeId, confidence, remaining;
+  if (bestMatch && bestScore >= FUZZY_THRESHOLD) {
+    docType = bestMatch.label; docTypeId = bestMatch.id;
+    confidence = Math.round(bestScore * 1000) / 10;
+    remaining = tokens.slice(0, bestIdx);
+  } else {
+    docType = 'Schreiben'; docTypeId = 'schreiben'; confidence = 70.0;
+    remaining = [...tokens];
+  }
+
+  // Extract FA
+  let finanzamt = '', faMissing = true;
+  const customerTokens = [];
+  for (let i = 0; i < remaining.length; i++) {
+    if (FA_MARKERS.has(remaining[i].toLowerCase())) {
+      faMissing = false;
+      const faNameTokens = [];
+      let j = i + 1;
+      while (j < remaining.length) {
+        const test = remaining[j].toLowerCase();
+        let isKw = false;
+        for (const dt of docTypes) { for (const kw of dt.keywords) { if (test.includes(kw.toLowerCase()) || kw.toLowerCase().includes(test)) { isKw = true; break; } } if (isKw) break; }
+        if (isKw || FA_MARKERS.has(test)) break;
+        faNameTokens.push(remaining[j]); j++;
+      }
+      finanzamt = faNameTokens.length ? faNameTokens.join(' ') : 'FA';
+      i = j - 1;
+    } else {
+      customerTokens.push(remaining[i]);
+    }
+  }
+
+  const customerRaw = customerTokens.join(' ').replace(/  +/g, ' ').trim();
+  const customer = normalizeName(customerRaw);
+
+  return { filename, date: dateStr, customer, customerRaw, doc_type: docType, doc_type_id: docTypeId, confidence, finanzamt, fa_missing: faMissing, added_at: new Date().toISOString().slice(0, 19).replace('T', ' ') };
+}
+
+/* ================================================================
+   IndexedDB — Persistent local database
+   ================================================================ */
+let db = null;
+const DB_NAME = 'KanzleiTracker';
+const DB_VERSION = 1;
+const STORE_NAME = 'documents';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: 'filename' });
+        store.createIndex('customer', 'customer');
+        store.createIndex('doc_type', 'doc_type');
+        store.createIndex('date', 'date');
+        store.createIndex('finanzamt', 'finanzamt');
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function loadDB() { if (!db) await openDB(); }
+
+function insertResults(results) {
+  return new Promise(async (resolve) => {
+    await loadDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    let inserted = 0, skipped = 0;
+    for (const r of results) {
+      try {
+        const req = store.add(r);
+        req.onsuccess = () => inserted++;
+        req.onerror = (e) => { skipped++; e.preventDefault(); }; // Duplicate key
+      } catch (e) { skipped++; }
+    }
+    tx.oncomplete = () => resolve({ inserted, skipped });
+    tx.onerror = () => resolve({ inserted, skipped });
+  });
+}
+
+function getAllDocs() {
+  return new Promise(async (resolve) => {
+    await loadDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+function clearAllDocs() {
+  return new Promise(async (resolve) => {
+    await loadDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+    tx.oncomplete = () => resolve();
+  });
+}
+
+/* ================================================================
+   UI Logic (same patterns as local version)
+   ================================================================ */
+const $ = id => document.getElementById(id);
+let sessionResults = [], allMandanten = {};
+const charts = {};
+
+function toggleTheme() {
+  const h = document.documentElement, n = h.dataset.theme === 'light' ? 'dark' : 'light';
+  h.dataset.theme = n; $('theme-btn').textContent = n === 'light' ? '☀️' : '🌙'; localStorage.setItem('kd-theme', n);
+  if (document.querySelector('.tab[data-tab="dashboard"]')?.classList.contains('a')) loadDash();
+}
+(() => { const t = localStorage.getItem('kd-theme'); if (t) { document.documentElement.dataset.theme = t; $('theme-btn').textContent = t === 'light' ? '☀️' : '🌙'; } })();
+
+function tgl(id) { $(id).classList.toggle('open'); }
+function sw(n) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('a', t.dataset.tab === n));
+  document.querySelectorAll('.tc').forEach(c => c.classList.toggle('a', c.id === 'tab-' + n));
+  if (n === 'dashboard') loadDash(); if (n === 'mandanten') loadMandanten(); if (n === 'history') loadHistory();
+  if (n === 'settings') renderTypes();
+}
+function toast(m, t = 'ok') { const e = $('toast'); e.textContent = m; e.className = 'toast ' + t + ' show'; setTimeout(() => e.classList.remove('show'), 3500); }
+function fmtDate(d) { return d && d.length >= 8 ? d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) : '—'; }
+function fmtMonth(m) { return m && m.length >= 6 ? m.slice(0, 4) + '-' + m.slice(4, 6) : '?'; }
+function cc(c) { return c >= 90 ? 'ch' : c >= 80 ? 'cm' : 'cl'; }
+async function updateBadge() { const docs = await getAllDocs(); $('db-badge').textContent = 'DB: ' + docs.length; }
+
+function getChartColors() {
+  const s = getComputedStyle(document.documentElement);
+  return ['--ch1', '--ch2', '--ch3', '--ch4', '--ch5', '--ch6', '--ch7'].map(v => s.getPropertyValue(v).trim());
+}
+function destroyChart(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+// Upload results
+function renderUpload(data) {
+  $('scan-status').style.display = 'none';
+  $('up-res').style.display = 'block';
+  const r = data.results, types = {}, custs = new Set(), fam = r.filter(x => x.fa_missing).length;
+  r.forEach(x => { types[x.doc_type] = (types[x.doc_type] || 0) + 1; custs.add(x.customer); });
+  $('up-stats').innerHTML = `<div class="sc"><div class="sl">Gescannt</div><div class="sv">${r.length}</div></div><div class="sc"><div class="sl">Neu</div><div class="sv" style="color:var(--g)">${data.inserted}</div></div><div class="sc"><div class="sl">Duplikate</div><div class="sv" style="color:${data.skipped > 0 ? 'var(--am)' : 'var(--g)'}">${data.skipped}</div></div><div class="sc"><div class="sl">Mandanten</div><div class="sv">${custs.size}</div></div><div class="sc"><div class="sl">FA fehlt</div><div class="sv" style="color:${fam > 0 ? 'var(--r)' : 'var(--g)'}">${fam}</div></div>`;
+  $('up-cnt').textContent = r.length;
+  $('up-body').innerHTML = r.map(r => `<tr><td class="fn" title="${r.filename}">${r.filename}</td><td>${fmtDate(r.date)}</td><td><strong>${r.customer || '—'}</strong></td><td>${r.fa_missing ? '<span class="fa-warn">⚠</span>' : '<span class="fa-ok">' + (r.finanzamt || '—') + '</span>'}</td><td><span class="badge ${cc(r.confidence)}">${r.doc_type}</span></td><td><span class="badge ${cc(r.confidence)}">${r.confidence > 0 ? r.confidence + '%' : '—'}</span></td></tr>`).join('');
+}
+
+// Dashboard
+async function loadDash() {
+  const docs = await getAllDocs();
+  if (!docs.length) { $('dash-loading').textContent = 'Noch keine Dokumente.'; $('dash-loading').style.display = 'block'; $('dash-c').style.display = 'none'; return; }
+  $('dash-loading').style.display = 'none'; $('dash-c').style.display = 'block';
+  const cols = getChartColors();
+
+  // Stats
+  const types = {}, custs = {}, monthly = {}, custType = {};
+  let faM = 0;
+  docs.forEach(d => {
+    types[d.doc_type] = (types[d.doc_type] || 0) + 1;
+    custs[d.customer] = (custs[d.customer] || 0) + 1;
+    if (d.fa_missing) faM++;
+    const m = d.date ? d.date.slice(0, 6) : '';
+    if (m) { if (!monthly[m]) monthly[m] = {}; monthly[m][d.doc_type] = (monthly[m][d.doc_type] || 0) + 1; }
+    if (!custType[d.customer]) custType[d.customer] = {};
+    custType[d.customer][d.doc_type] = (custType[d.customer][d.doc_type] || 0) + 1;
+  });
+
+  const months = Object.keys(monthly).sort();
+  const mTotals = months.map(m => Object.values(monthly[m]).reduce((s, v) => s + v, 0));
+  let trendHtml = '';
+  if (mTotals.length >= 2) { const l = mTotals[mTotals.length - 1], p = mTotals[mTotals.length - 2], pct = p > 0 ? Math.round((l - p) / p * 100) : 0; trendHtml = pct >= 0 ? `<span class="trend-up">↑ ${pct}%</span>` : `<span class="trend-down">↓ ${Math.abs(pct)}%</span>`; }
+  const avgConf = docs.reduce((s, d) => s + (d.confidence || 0), 0) / docs.length;
+
+  $('d-stats').innerHTML = `<div class="sc"><div class="sl">Gesamt</div><div class="sv-row"><div class="sv">${docs.length}</div>${trendHtml}</div><div class="ss">vs. Vormonat</div></div><div class="sc"><div class="sl">Mandanten</div><div class="sv">${Object.keys(custs).length}</div></div><div class="sc"><div class="sl">Typen</div><div class="sv">${Object.keys(types).length}</div></div><div class="sc"><div class="sl">Ø Konfidenz</div><div class="sv" style="color:${avgConf >= 85 ? 'var(--g)' : 'var(--am)'}">${avgConf.toFixed(1)}%</div></div><div class="sc"><div class="sl">FA fehlt</div><div class="sv" style="color:${faM > 0 ? 'var(--r)' : 'var(--g)'}">${faM}</div></div>`;
+
+  // Donut
+  const td = Object.entries(types).sort((a, b) => b[1] - a[1]);
+  $('donut-total').textContent = docs.length;
+  destroyChart('donut');
+  charts.donut = new Chart($('chart-donut'), { type: 'doughnut', data: { labels: td.map(x => x[0]), datasets: [{ data: td.map(x => x[1]), backgroundColor: cols.slice(0, td.length), borderWidth: 0, hoverOffset: 6 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--t2').trim(), font: { size: 9 }, boxWidth: 10, padding: 6 } } } } });
+
+  // Stacked bar — customer × type
+  const allTypes = Object.keys(types).sort();
+  const topCusts = Object.entries(custs).sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+  const stackDS = allTypes.map((t, i) => ({ label: t, data: topCusts.map(c => custType[c]?.[t] || 0), backgroundColor: cols[i % cols.length], borderRadius: 2, borderSkipped: false }));
+  destroyChart('custStack');
+  const gridCol = getComputedStyle(document.documentElement).getPropertyValue('--bdr').trim();
+  const t3Col = getComputedStyle(document.documentElement).getPropertyValue('--t3').trim();
+  charts.custStack = new Chart($('chart-cust-stack'), { type: 'bar', data: { labels: topCusts.map(n => n.length > 18 ? n.slice(0, 15) + '...' : n), datasets: stackDS }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { stacked: true, grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } }, y: { stacked: true, grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } } }, plugins: { legend: { display: false }, tooltip: { mode: 'index' } } } });
+  $('cust-legend').innerHTML = allTypes.map((t, i) => `<div class="legend-item"><div class="legend-dot" style="background:${cols[i % cols.length]}"></div>${t}</div>`).join('');
+
+  // Trend line
+  destroyChart('trend');
+  charts.trend = new Chart($('chart-trend'), { type: 'line', data: { labels: months.map(fmtMonth), datasets: [{ data: mTotals, borderColor: cols[0], backgroundColor: cols[0] + '22', fill: true, tension: .35, pointRadius: 3, borderWidth: 2 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } }, y: { grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } } } } });
+
+  // Top customers
+  const topC = Object.entries(custs).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  destroyChart('topCust');
+  charts.topCust = new Chart($('chart-top-cust'), { type: 'bar', data: { labels: topC.map(x => x[0].length > 20 ? x[0].slice(0, 17) + '...' : x[0]), datasets: [{ data: topC.map(x => x[1]), backgroundColor: cols[0], borderRadius: 3, borderSkipped: false }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } }, y: { grid: { color: gridCol }, ticks: { color: t3Col, font: { size: 9 } } } } } });
+}
+
+// Mandanten
+async function loadMandanten() {
+  const docs = await getAllDocs();
+  allMandanten = {};
+  docs.forEach(d => {
+    if (!allMandanten[d.customer]) allMandanten[d.customer] = { types: {}, total: 0, first: '', last: '', fas: new Set() };
+    const m = allMandanten[d.customer];
+    m.types[d.doc_type] = (m.types[d.doc_type] || 0) + 1;
+    m.total++;
+    if (d.finanzamt) m.fas.add(d.finanzamt);
+    if (!m.first || d.date < m.first) m.first = d.date;
+    if (!m.last || d.date > m.last) m.last = d.date;
+  });
+  renderMandanten(Object.keys(allMandanten));
+}
+function renderMandanten(keys) {
+  $('m-grid').innerHTML = keys.sort((a, b) => allMandanten[b].total - allMandanten[a].total).map(name => {
+    const m = allMandanten[name], fa = m.fas?.size ? [...m.fas].join(', ') : '—';
+    return `<div class="mc"><div class="mc-name">${name}</div><div class="mc-meta">${m.total} Dok · ${fmtDate(m.first)} – ${fmtDate(m.last)} · FA: ${fa}</div><div class="mc-types">${Object.entries(m.types).sort((a, b) => b[1] - a[1]).map(([t, c]) => `<span class="mc-tag">${t}: ${c}</span>`).join('')}</div></div>`;
+  }).join('') || '<div style="color:var(--t3);padding:20px;text-align:center">Keine Mandanten.</div>';
+}
+function filterMandanten() { renderMandanten(Object.keys(allMandanten).filter(k => k.toLowerCase().includes($('m-search').value.toLowerCase()))); }
+
+// History
+async function loadHistory() {
+  const docs = await getAllDocs();
+  const types = {};
+  docs.forEach(d => types[d.doc_type] = (types[d.doc_type] || 0) + 1);
+  const sel = $('h-filter'); sel.innerHTML = '<option value="">Alle</option>';
+  Object.keys(types).sort().forEach(t => sel.innerHTML += `<option value="${t}">${t}</option>`);
+  renderHistory();
+}
+async function renderHistory() {
+  const docs = await getAllDocs();
+  const s = $('h-search').value.toLowerCase(), f = $('h-filter').value;
+  const filtered = docs.filter(r => (f ? r.doc_type === f : true) && (s ? r.filename.toLowerCase().includes(s) || r.customer.toLowerCase().includes(s) : true));
+  $('h-cnt').textContent = filtered.length + ' Dok.';
+  $('h-body').innerHTML = filtered.length ? filtered.map(r => `<tr><td class="fn" title="${r.filename}">${r.filename}</td><td>${fmtDate(r.date || r.doc_date)}</td><td><strong>${r.customer || '—'}</strong></td><td>${r.fa_missing ? '<span class="fa-warn">⚠</span>' : (r.finanzamt ? '<span class="fa-ok">' + r.finanzamt + '</span>' : '—')}</td><td><span class="badge ${cc(r.confidence)}">${r.doc_type}</span></td><td><span class="badge ${cc(r.confidence)}">${r.confidence > 0 ? r.confidence + '%' : '—'}</span></td><td style="font-size:9px;color:var(--t3)">${r.added_at || '—'}</td></tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--t3);padding:20px">—</td></tr>';
+}
+
+async function clearDB() { if (!confirm('Alle Dokumente löschen?')) return; await clearAllDocs(); updateBadge(); loadHistory(); toast('Geleert.'); }
+
+function exportCSV() {
+  getAllDocs().then(docs => {
+    if (!docs.length) { toast('Keine Daten.', 'err'); return; }
+    const headers = ['Dateiname', 'Datum', 'Mandant', 'Finanzamt', 'Dokumententyp', 'Konfidenz', 'FA_fehlt', 'Hinzugefuegt'];
+    const rows = docs.map(d => [d.filename, d.date, d.customer, d.finanzamt || '', d.doc_type, d.confidence, d.fa_missing ? 'Ja' : 'Nein', d.added_at || ''].map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';'));
+    const csv = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'Dokumenten_Export_' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click(); URL.revokeObjectURL(url);
+    toast('CSV exportiert.');
+  });
+}
+
+// Settings
+function renderTypes() {
+  $('dtl').innerHTML = docTypes.map(dt => `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg2);border:1px solid var(--bdr);border-radius:var(--rads)"><div style="flex:1"><div style="font-size:12px;font-weight:600">${dt.label}</div><div style="font-size:9px;color:var(--t3);font-family:'JetBrains Mono',monospace">${dt.keywords.join(', ')}</div></div><button class="b bs bd" onclick="removeType('${dt.id}')" style="width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:var(--rads)">✕</button></div>`).join('');
+}
+function addType() {
+  const l = $('nt-l').value.trim(), k = $('nt-k').value.trim();
+  if (!l) { toast('Name!', 'err'); return; }
+  const id = l.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20) + docTypes.length;
+  const keywords = k ? k.split(',').map(x => x.trim()).filter(Boolean) : [l];
+  docTypes.push({ id, label: l, keywords }); saveTypes(); renderTypes();
+  $('nt-l').value = ''; $('nt-k').value = ''; toast('"' + l + '" +');
+}
+function removeType(id) { docTypes = docTypes.filter(d => d.id !== id); saveTypes(); renderTypes(); toast('Entfernt.'); }
+function saveTypes() { localStorage.setItem('kd-doctypes', JSON.stringify(docTypes)); }
+
+/* Init */
+initMsal();
+</script>
+</body>
+</html>
